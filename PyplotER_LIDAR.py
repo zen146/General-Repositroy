@@ -165,7 +165,7 @@ def plot(frame):
     global_count+=1
     for i in a:
         if not enable_2dscan: break
-        mx_x = int(((i)/3)*(mx_c_record)-1)
+        mx_x = int(((i)/3)*(mx_c_record-1))
         angle_y = ((y/1.5)*80)+3
         mx_y = int(((angle_y+((mx_r_record/2)-1))))
         b_b.append(mx_y)
