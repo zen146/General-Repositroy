@@ -1,16 +1,5 @@
 class BlitManager:
     def __init__(self, canvas, animated_artists=()):
-        """
-        Parameters
-        ----------
-        canvas : FigureCanvasAgg
-            The canvas to work with, this only works for sub-classes of the Agg
-            canvas which have the `~FigureCanvasAgg.copy_from_bbox` and
-            `~FigureCanvasAgg.restore_region` methods.
-
-        animated_artists : Iterable[Artist]
-            List of the artists to manage
-        """
         self.canvas = canvas
         self._bg = None
         self._artists = []
@@ -21,7 +10,6 @@ class BlitManager:
         self.cid = canvas.mpl_connect("draw_event", self.on_draw)
 
     def on_draw(self, event):
-        """Callback to register with 'draw_event'."""
         cv = self.canvas
         if event is not None:
             if event.canvas != cv:
@@ -30,44 +18,25 @@ class BlitManager:
         self._draw_animated()
 
     def add_artist(self, art):
-        """
-        Add an artist to be managed.
-
-        Parameters
-        ----------
-        art : Artist
-
-            The artist to be added.  Will be set to 'animated' (just
-            to be safe).  *art* must be in the figure associated with
-            the canvas this class is managing.
-
-        """
         if art.figure != self.canvas.figure:
             raise RuntimeError
         art.set_animated(True)
         self._artists.append(art)
 
     def _draw_animated(self):
-        """Draw all of the animated artists."""
         fig = self.canvas.figure
         for a in self._artists:
             fig.draw_artist(a)
 
     def update(self):
-        """Update the screen with animated artists."""
         cv = self.canvas
         fig = cv.figure
-        # paranoia in case we missed the draw event,
         if self._bg is None:
             self.on_draw(None)
         else:
-            # restore the background
             cv.restore_region(self._bg)
-            # draw all of the animated artists
             self._draw_animated()
-            # update the GUI state
             cv.blit(fig.bbox)
-        # let the GUI event loop process anything it has to do
         cv.flush_events()
 import os
 import ydlidar
@@ -117,7 +86,7 @@ laser.setlidaropt(ydlidar.LidarPropSerialPort, port);
 laser.setlidaropt(ydlidar.LidarPropSerialBaudrate, 115200)
 laser.setlidaropt(ydlidar.LidarPropLidarType, ydlidar.TYPE_TOF);
 laser.setlidaropt(ydlidar.LidarPropDeviceType, ydlidar.YDLIDAR_TYPE_SERIAL);
-laser.setlidaropt(ydlidar.LidarPropScanFrequency, 10.0);
+laser.setlidaropt(ydlidar.LidarPropScanFrequency, 20.0);
 laser.setlidaropt(ydlidar.LidarPropSampleRate, 3);
 laser.setlidaropt(ydlidar.LidarPropSingleChannel, True);
 laser.setlidaropt(ydlidar.LidarPropMaxAngle, 45.);
@@ -147,8 +116,11 @@ plt.pause(.1)
 axes.set_thetamin(-45)
 axes.set_thetamax(45)
 axes.set_theta_direction(-1)
+axes.set_xticks([])
+axes.set_yticks([])
 yaw_axis.set_thetamin(-90)
 yaw_axis.set_thetamax(90)
+yaw_axis.set_yticks([])
 
 #BLIT
 bm = BlitManager(fig.canvas,[art,art2,art2A,art2B,art3,art4_im,art5_yaw,
@@ -208,7 +180,7 @@ def call():
     reset_at = 10
     count += 1
     if count >=reset_at:
-        percent_reduc = .9
+        percent_reduc = .95
         mx_reduction = 1
         for r in range(len(matrix)):
             if not mx_reduction: break 
@@ -233,21 +205,4 @@ while True:
 end = time.time()
 time.sleep(1)
 plt.show()
-
-    
-'''
-def animate(self):    
-  
-    return art
-   
-        
-    
-    
-
-
-if ret:
-    ani = animation.FuncAnimation(fig, animate, interval=50,blit=0)
-    plt.show()
-
-'''
-
+.
