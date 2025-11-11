@@ -1,16 +1,5 @@
 class BlitManager:
     def __init__(self, canvas, animated_artists=()):
-        """
-        Parameters
-        ----------
-        canvas : FigureCanvasAgg
-            The canvas to work with, this only works for sub-classes of the Agg
-            canvas which have the `~FigureCanvasAgg.copy_from_bbox` and
-            `~FigureCanvasAgg.restore_region` methods.
-
-        animated_artists : Iterable[Artist]
-            List of the artists to manage
-        """
         self.canvas = canvas
         self._bg = None
         self._artists = []
@@ -21,7 +10,6 @@ class BlitManager:
         self.cid = canvas.mpl_connect("draw_event", self.on_draw)
 
     def on_draw(self, event):
-        """Callback to register with 'draw_event'."""
         cv = self.canvas
         if event is not None:
             if event.canvas != cv:
@@ -30,47 +18,26 @@ class BlitManager:
         self._draw_animated()
 
     def add_artist(self, art):
-        """
-        Add an artist to be managed.
-
-        Parameters
-        ----------
-        art : Artist
-
-            The artist to be added.  Will be set to 'animated' (just
-            to be safe).  *art* must be in the figure associated with
-            the canvas this class is managing.
-
-        """
         if art.figure != self.canvas.figure:
             raise RuntimeError
         art.set_animated(True)
         self._artists.append(art)
 
     def _draw_animated(self):
-        """Draw all of the animated artists."""
         fig = self.canvas.figure
         for a in self._artists:
             fig.draw_artist(a)
 
     def update(self):
-        """Update the screen with animated artists."""
         cv = self.canvas
         fig = cv.figure
-        # paranoia in case we missed the draw event,
         if self._bg is None:
             self.on_draw(None)
         else:
-            # restore the background
             cv.restore_region(self._bg)
-            # draw all of the animated artists
             self._draw_animated()
-            # update the GUI state
             cv.blit(fig.bbox)
-        # let the GUI event loop process anything it has to do
         cv.flush_events()
-
-
 import os
 import ydlidar
 import time
@@ -81,6 +48,7 @@ from matplotlib import gridspec
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 import matplotlib.animation as animation
+from matplotlib.widgets import RadioButtons
 import numpy as np
 
 RMAX = 8
@@ -109,7 +77,7 @@ laser.setlidaropt(ydlidar.LidarPropSerialPort, port);
 laser.setlidaropt(ydlidar.LidarPropSerialBaudrate, 115200)
 laser.setlidaropt(ydlidar.LidarPropLidarType, ydlidar.TYPE_TOF);
 laser.setlidaropt(ydlidar.LidarPropDeviceType, ydlidar.YDLIDAR_TYPE_SERIAL);
-laser.setlidaropt(ydlidar.LidarPropScanFrequency, 3.0);
+laser.setlidaropt(ydlidar.LidarPropScanFrequency, 20.0);
 laser.setlidaropt(ydlidar.LidarPropSampleRate, 3);
 laser.setlidaropt(ydlidar.LidarPropSingleChannel, True);
 laser.setlidaropt(ydlidar.LidarPropMaxAngle, 45.);
@@ -121,7 +89,7 @@ scan = ydlidar.LaserScan()
 #axisE = plt.subplots(2,2,gridspec_kw={'height_ratios': [5,1],'width_ratios': [5,1]})
 angle = []
 ran = []
-art=axes.scatter(angle, ran,color='yellow',animated=True) 
+art=axes.scatter(angle, ran,color='yellow',animated=True,s=10) 
 art2=bar.plot([0,.7],[0.7,0.7],color='cyan',animated=True)[0] 
 art2A=bar.plot([0,.5],[0.5,0.5],color='red',animated=True)[0]
 art2B=bar.plot([0,.25],[0.25,0.25],color='green',animated=True)[0]
@@ -132,16 +100,18 @@ plt.axis([0,1,0,1])
 bar.set_ylim((0,1))
 bar.set_xlim((0,8))
 bframe.set_xlim((0,12))
-
-
+								
 plt.show(block=False)
 plt.pause(.1)
 
 axes.set_thetamin(-45)
 axes.set_thetamax(45)
+axes.set_xticks([])
+axes.set_yticks([])
 axes.set_theta_direction(-1)
 yaw_axis.set_thetamin(-90)
 yaw_axis.set_thetamax(90)
+yaw_axis.set_yticks([])
 bm = BlitManager(fig.canvas,[art,art2,art2A,art2B,art3,art5_yaw,
                             axes.set_title('LINE SCAN'),bar.set_title('DISTANCE (m)'),bframe.set_title('FPS'),yaw_axis.set_title('HEAD ANGLE'),
                             bar.legend(['FARTHEST','MIDDLE','MINIMUM'],fontsize=9)])
@@ -152,28 +122,39 @@ ret = laser.initialize();
 time.sleep(.5)
 ret = laser.turnOn();
 
+maxran = 5
+
 
 def call():
-    tstart = time.time()
-    angle = []
-    ran = []
-    r = laser.doProcessSimple(scan);
-    for point in scan.points:
-        angle.append(point.angle);
-        ran.append(point.range*.23);
-    maxran = max(ran)
-    art.set_offsets(np.c_[angle,ran])
-    axes.set_ylim((0,maxran))
-    axes.relim()
-    
-    ran.sort()
-    art2.set_xdata([0,ran[-1]])
-    art2A.set_xdata([0,ran[-int((len(ran)*.4))]])
-    art2B.set_xdata([0,ran[-int((len(ran)*.9))]])
-    art5_yaw.set_offsets([mpu_axis(),1])
-    bm.update()
-    art3.set_xdata([0,1/(time.time()-tstart)])
-    #print('FRAMES',1/(time.time()-tstart))
+	global maxran
+	tstart = time.time()
+	angle = []
+	ran = []
+	r = laser.doProcessSimple(scan);
+	for point in scan.points:
+		angle.append(point.angle);
+		ran.append(point.range*.23);
+	art.set_offsets(np.c_[angle,ran])
+	axes.set_ylim((0,maxran))
+	axes.relim()
+
+	ran.sort()
+	art2.set_xdata([0,ran[-1]])
+	art2A.set_xdata([0,ran[-int((len(ran)*.4))]])
+	art2B.set_xdata([0,ran[-int((len(ran)*.9))]])
+	art5_yaw.set_offsets([mpu_axis(),1])
+	x,y,z = gyro()
+	g_ave = abs(x)+abs(y)+abs(z)
+	if g_ave >=100:
+		maxran=max(ran)
+	bm.update()
+	art3.set_xdata([0,1/(time.time()-tstart)])
+	#print(temp())
+	#print('FRAMES',1/(time.time()-tstart))
+def temp():
+	return mpu.get_temp()
+def gyro():
+    return int(mpu.get_gyro_data().get('x')),int(mpu.get_gyro_data().get('y')),int(mpu.get_gyro_data().get('z'))
 def accel():
     return float(mpu.get_accel_data().get('x')), float(mpu.get_accel_data().get('y')), float(mpu.get_accel_data().get('z'))
 #MPU AXIS
@@ -205,4 +186,3 @@ if ret:
     plt.show()
 
 '''
-
