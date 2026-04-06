@@ -1,1 +1,1 @@
-The main code of the device is named as "PyplotER_LiDAR"
+The legacy main code of the device is named as "PyplotER_LiDAR"
